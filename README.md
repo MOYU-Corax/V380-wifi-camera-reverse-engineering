@@ -20,6 +20,7 @@ protocol you just read frames off a socket.
 |---|---|
 | **App** | "V380" / "V380 Pro" |
 | **Reference unit** | model `AC54`, EXIF manufacturer `JLDV`, `deviceVersion 31` |
+| **Bought from** | [this AliExpress listing](https://www.aliexpress.com/item/1005009307282734.html) |
 | **Open port** | **TCP 8800** ← the giveaway |
 | **Video out** | MJPEG 640×480 (other units in the family emit H.264/H.265) |
 | **Family marker** | the login key string `macrovideo+*#!^@` inside the app |
