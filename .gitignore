@@ -1,0 +1,6 @@
+# local credentials — never commit
+config.sh
+
+node_modules/
+*.log
+*.pcap
