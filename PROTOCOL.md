@@ -200,6 +200,7 @@ followed by `payloadLen` bytes. Bytes 2 and 9–11 are unused.
 | `0x28` / `0x29` | video, alternate encoding (firmware v32+) |
 | `0x09` | video — **what the reference unit sends (MJPEG)** |
 | `0x1A` | audio (G.711) |
+| `0x16` | audio/telemetry — observed on a `deviceVersion=3` unit: fixed 272-byte payloads, not decoded |
 | `0x5B` | control / ignore |
 
 ### Reassembly
@@ -241,6 +242,12 @@ than 80 bytes is plaintext. Audio (`0x1A`) is simpler: straight AES-ECB over
 i.e. the camera streams **MJPEG**, not H.264 — despite the app shipping an H.264 decoder.
 Other cameras in the family emit H.264/H.265 on types `0x00/0x01`. Sniff the first bytes
 of a decrypted payload to find out which you have.
+
+> **Second unit observed** (`deviceVersion=3`, 1280×720): plaintext (no media key, as
+> expected for `deviceVersion ≤ 30`) **H.264 Annex B** on types `0x00/0x01` at ~9 fps.
+> I-frames are self-contained (`SPS + PPS + IDR`), so a client can join mid-stream and
+> starts decoding at the next I-frame (~1 s). `--quality 0` switches it to 640×480 but
+> *not* to MJPEG — the codec is fixed per unit, only the resolution changes.
 
 Serving it is then trivial: emit each JPEG as `multipart/x-mixed-replace` and any browser
 or VLC will play it.

@@ -1,5 +1,12 @@
 # local credentials — never commit
 config.sh
+config.cmd
+
+# diagnostic captures contain your camera's video — never commit
+diag/*.bin
+diag/*.h264
+diag/*.jpg
+diag/*.log
 
 node_modules/
 *.log

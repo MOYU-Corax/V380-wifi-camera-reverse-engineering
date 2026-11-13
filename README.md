@@ -22,7 +22,7 @@ protocol you just read frames off a socket.
 | **Reference unit** | model `AC54`, EXIF manufacturer `JLDV`, `deviceVersion 31` |
 | **Bought from** | [this AliExpress listing](https://www.aliexpress.com/item/1005009307282734.html) |
 | **Open port** | **TCP 8800** ← the giveaway |
-| **Video out** | MJPEG 640×480 (other units in the family emit H.264/H.265) |
+| **Video out** | MJPEG 640×480, **or** H.264 720p/480p (both supported — see below) |
 | **Family marker** | the login key string `macrovideo+*#!^@` inside the app |
 
 If `nmap -p 8800 <camera-ip>` is open, you're almost certainly in the right place.
@@ -39,6 +39,16 @@ cp config.example.sh config.sh   # then edit: device id, password, (optional) MA
 ./run-v380.sh
 ```
 
+**Windows** (cmd / double-clickable, no WSL needed):
+
+```bat
+git clone https://github.com/26medias/V380-wifi-camera-reverse-engineering
+cd V380-wifi-camera-reverse-engineering
+
+copy config.example.cmd config.cmd   # then edit: device id, password, (optional) MAC
+run-v380.cmd
+```
+
 Then open **<http://localhost:8090/>**.
 
 | endpoint | what you get |
@@ -46,12 +56,16 @@ Then open **<http://localhost:8090/>**.
 | `/` | live view page |
 | `/stream` | `multipart/x-mixed-replace` MJPEG — works in VLC, browsers, Home Assistant |
 | `/snapshot` | latest single JPEG |
+| `/stream.h264` | raw H.264/H.265 elementary stream (H.264 units; VLC/ffplay play it directly) |
 
 Or drive the client directly:
 
 ```bash
 node v380-mjpeg.js --id 12345678 --password 'yourpass' --mac aa:bb:cc:dd:ee:ff --http 8090
 ```
+
+`--quality 0` / `--quality 1` switches SD (640×480) vs HD (720p) — on H.264 units this
+changes the resolution; MJPEG units ignore it.
 
 Requires **Node 18+** and nothing else. (`nmap` is used only as a rare fallback when
 re-finding the camera by MAC.)
@@ -101,15 +115,21 @@ Full details, byte tables and result codes: **[PROTOCOL.md](PROTOCOL.md)**.
   every reconnect, so DHCP lease changes don't break it.
 - **Self-healing** — the camera can go silent on a still-open socket; a watchdog reconnects
   after 8 s of no frames.
-- **Zero dependencies** — Node stdlib only.
+- **MJPEG *and* H.264/H.265 units** — the codec is sniffed from the first complete frame.
+  MJPEG is served natively; on H.264 units the raw elementary stream is served at
+  `/stream.h264`, and if `ffmpeg` happens to be on PATH it is also transparently
+  transcoded to MJPEG so `/stream` and `/snapshot` keep working in browsers.
+- **Zero dependencies** — Node stdlib only (ffmpeg optional, for H.264 units).
 
 ### Known behaviours
 
 - **Single session.** The camera serves one client. If you open the phone app, this client
   goes dark until you close it (and then recovers on its own).
 - **Silent stalls.** Handled by the watchdog — see above.
-- **Not all units are MJPEG.** If a decrypted payload doesn't start `FF D8`, you have an
-  H.264/H.265 unit — pipe the elementary stream to ffmpeg instead of carving JPEGs.
+- **H.264 units** (e.g. `deviceVersion=3`, 1280×720): every I-frame carries its own
+  SPS+PPS, so a late `/stream.h264` client starts decoding within ~1 s of the next
+  I-frame. Without ffmpeg, `/stream` and `/snapshot` return 503 with a hint; with ffmpeg
+  everything behaves like an MJPEG unit.
 
 ---
 
@@ -137,8 +157,10 @@ credential — don't paste them into issues.
 |---|---|
 | `PROTOCOL.md` | the full reverse-engineered protocol spec |
 | `v380-mjpeg.js` | the client (zero dependencies) |
-| `run-v380.sh` | launcher; reads `config.sh` |
+| `run-v380.sh` | launcher (Linux/macOS); reads `config.sh` |
 | `config.example.sh` | template — copy to `config.sh` |
+| `run-v380.cmd` | launcher (Windows); reads `config.cmd` |
+| `config.example.cmd` | template — copy to `config.cmd` |
 
 ---
 
